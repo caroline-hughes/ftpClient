@@ -1,0 +1,57 @@
+ftp://hughesca:iEjqNW5nFSpT0ucmrUHw@ftp.3700.network:22/PATH
+
+
+Modern FTP implementations use TCP/IP as their transport and network protocols. 
+Thus, to connect to an FTP Server, your client will need to open a TCP socket.
+
+once successfully connected, youll get a welcome message from server...
+
+
+
+
+
+Once your client has connected a TCP socket to a remote server, it will begin exchanging 
+text-formatted requests and responses with the FTP server.
+
+client requests take form: 
+
+    COMMAND <param> <...>\r\n
+
+COMMAND is typically a three or four letter command, in all caps, 
+that tells the FTP server to perform some action. Depending on what command is sent, 
+additional parameters may also be required (but may not). All FTP requests end with \r\n.
+
+
+the server will respond with at least one but possibly two messages, in form:
+
+    CODE <human readable explanation> <param>.\r\n
+
+
+CODE is a three digit integer that specifies whether the FTP server was able to complete the request.
+
+1XX codes indicate that more action is expected (e.g., waiting for a file to download or upload);
+2XX codes indicate success;
+3XX indicates preliminary success, but more action is required (e.g., your client sent a username, but now a valid password is required);
+4XX, 5XX, and 6XX codes indicate that an error has occurred.
+
+Responses may also include a parameter that is necessary for the client to function 
+(most importantly, for the PASV command, see below). All FTP responses end with \r\n.
+
+
+
+REQUEST 1: USER hughesca\r\n
+REQUEST 2: PASS iEjqNW5nFSpT0ucmrUHw\r\n
+REQUEST 3: TYPE I\r\n
+    Set the connection to 8-bit binary data mode (as opposed to 7-bit ASCII or 36-bit EBCDIC). 
+    Your client should set the TYPE before attempting to upload or download any data.
+REQUEST 4: MODE S\r\n
+    Set the connection to stream mode (as opposed to block or compressed). 
+    Your client should set MODE before attempting to upload or download any data.
+REQUEST 5: STRU F\r\n
+    Set the connection to file-oriented mode (as opposed to record- or page-oriented). 
+    Your client should set STRU before attempting to upload or download any data.
+
+
+ftp://[USER[:PASSWORD]@]HOST[:PORT]/PATH
+
+$ ./3700ftp ls ftp://bob:s3cr3t@ftp.example.com/

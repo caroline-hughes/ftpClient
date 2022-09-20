@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+from array import array
+from re import S
+import argparse, logging, socket, json
+from urllib.parse import urlparse
+
+def sendMessage(s: socket, messageToSend: object):
+  msg = (json.dumps("hello") + "\n").encode()
+  totalBytesSent = 0
+  while totalBytesSent < len(msg):
+      # send logic inspiration: https://docs.python.org/3/howto/sockets.html
+      nextSent = s.send(msg[totalBytesSent:])
+      if nextSent == 0:
+          raise RuntimeError("lost socket connection")
+      totalBytesSent = totalBytesSent + nextSent
+  print(totalBytesSent)
+
+def receieveMessage(s: socket):
+  buffer = ''
+  try:
+      while "\n" not in buffer: 
+          data = s.recv(1024).decode('utf-8')
+          # buffer logic inspiration: https://stackoverflow.com/questions/55922194/python-breaks-string-after-first-character
+          if not data:
+              break
+          buffer += data
+  except Exception as loopException:
+      print("Exception occurred in loop:", loopException)
+  print(buffer)
+
+
+def ftpClient(args, loglevel):
+  logging.basicConfig(format="%(levelname)s: %(message)s", level=loglevel)
+
+  op = str(args.operation)
+  arg1 = str(args.param1) #ftp://[USER[:PASSWORD]@]HOST[:PORT]/PATH
+  arg2 = str(args.param2)
+
+  if op != "ls" and op != "mkdir" and op != "rm" and op != "rmdir" and op != "cp" and op != "mv":
+    print("please specify one of the operations: ls, mkdir, rm, rmdir, cp, mv")
+    return
+
+  parsed = urlparse(arg1)  
+
+  host = parsed.hostname or 'ftp.3700.network'
+  port = parsed.port or 21
+
+  # print(host, port)
+  username = parsed.username
+  pwd = parsed.password
+
+  if username == "" or pwd == "":
+    print("503 error: username and password required")
+
+
+  # create STREAMing socket
+  sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+  # # CONNECT
+  sock.connect((host, port))
+
+  # listen for TCP connection response
+  try:  
+    receieveMessage(sock)
+  except:
+    print('cant receieve...')
+
+  # send initial messages: 
+  #   USER hughesca\r\n
+  #   PASS iEjqNW5nFSpT0ucmrUHw\r\n
+  try:
+    # hello = {"type": "hello", "northeastern_username": username}
+    sendMessage(sock, "hello")
+  except:
+    print('could not send first message')
+
+  print('done, closing tcp socket')
+  sock.close()
+  
+
+
+
+  # print('scheme  :', parsed.scheme)
+  # print('netloc  :', parsed.netloc)
+  # print('path    :', parsed.path)
+  # print('username:', parsed.username)
+  # print('password:', parsed.password)
+  # print('hostname:', parsed.hostname)
+  # print('port    :', parsed.port)
+
+if __name__ == '__main__':
+  parser = argparse.ArgumentParser(description='ftp client!')
+  parser.add_argument('operation', type=str, help='the operation')
+  parser.add_argument('param1', type=str, help='param 1') # first param required
+  parser.add_argument('param2', type=str, nargs='?', help='param 2') # second param optional
+  args = parser.parse_args()
+  
+  loglevel = logging.INFO
+  
+  ftpClient(args, loglevel)
