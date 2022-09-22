@@ -38,20 +38,19 @@ Responses may also include a parameter that is necessary for the client to funct
 (most importantly, for the PASV command, see below). All FTP responses end with \r\n.
 
 
-
-REQUEST 1: USER hughesca\r\n
-REQUEST 2: PASS iEjqNW5nFSpT0ucmrUHw\r\n
-REQUEST 3: TYPE I\r\n
-    Set the connection to 8-bit binary data mode (as opposed to 7-bit ASCII or 36-bit EBCDIC). 
-    Your client should set the TYPE before attempting to upload or download any data.
-REQUEST 4: MODE S\r\n
-    Set the connection to stream mode (as opposed to block or compressed). 
-    Your client should set MODE before attempting to upload or download any data.
-REQUEST 5: STRU F\r\n
-    Set the connection to file-oriented mode (as opposed to record- or page-oriented). 
-    Your client should set STRU before attempting to upload or download any data.
-
-
 ftp://[USER[:PASSWORD]@]HOST[:PORT]/PATH
 
 $ ./3700ftp ls ftp://bob:s3cr3t@ftp.example.com/
+
+
+IM ON: STEP 4--
+
+PASV and LIST. Implement support for creating a data channel, 
+then implement the LIST command to test it.
+
+(54,88,34,75,7,100)
+
+The six numbers in parenthesis are the IP address and port that the client should connect a TCP/IP socket to to create the data channel. 
+The first four numbers are the IP address (192.168.150.90 in this example) and the last two numbers are the port. 
+Port numbers are 16-bits, so the two numbers represent the top and bottom 8-bits of the port number, respectively.
+In this example, the port number is (195 « 8) + 149 = 50069.
