@@ -27,7 +27,7 @@ def receieveMessage(s: socket):
           buffer += data
   except Exception as loopException:
       print("Exception occurred in loop:", loopException)
-  print(buffer)
+  print('receieved:', buffer)
   return buffer
 
 
@@ -82,14 +82,12 @@ def ftpClient(args, loglevel):
 
   # create STREAMing socket
   sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-  # # CONNECT
   sock.connect((host, port))
-  print('connected!')
+  print('(host, port) = ', (host, port))
 
   # listen for TCP connection response
   try:  
-    print('getting res...')
+    # print('getting res...')
     receieveMessage(sock)
   except:
     print('cant receieve...')
@@ -104,11 +102,23 @@ def ftpClient(args, loglevel):
     sendAndRecieve(sock, "RMD " + path + "\r\n", 'RMD')
   
   if (op == "ls"):
-    res = createDataChannel(sock)
+    (dataChannelIP, dataChannelPort) = createDataChannel(sock)
+    # print('(dataChannelIP, dataChannelPort) = ', (dataChannelIP, dataChannelPort))
+    # print('created STREAMing socket dataChannel, doing dataChannel.connect...')
+    # create another STREAMing socket
+    dataChannel = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    dataChannel.connect((dataChannelIP, dataChannelPort))
+    print('trying to send LIST now')
+    sendAndRecieve(sock, "LIST " + path + "\r\n", 'LIST')
+    try:  
+      # print('getting res...')
+      receieveMessage(dataChannel)
+    except:
+      print('cant receieve from dc...')
 
-    # need to extract these numbers out
-    # 227 Entering Passive Mode (54,88,34,75,7,100).
-    # sendAndRecieve(sock, "LIST " + path + "\r\n", 'RMD')
+  #if (op == "rm"):
+
+    
 
   
   quit(sock)
@@ -119,20 +129,36 @@ def ftpClient(args, loglevel):
 
 
 def createDataChannel(sock):
-  print('creating data channel')
-  sendAndRecieve(sock, "PASV\r\n", 'PASV')
+  # print('creating data channel...')
+  res = sendAndRecieve(sock, "PASV\r\n", 'PASV')
+  numArr = res[res.find("(") + 1: res.find(")")].split(",")
+  ip = numArr[0] + "." + numArr[1] + "." + numArr[2] + "." + numArr[3]
+  # print('calculating port. ')
+  # print('numArr[4]) << 8 = ', (int(numArr[4]) << 8))
+  # print('numArr[5] = ', int(numArr[5]))
+  # print('numArr[4]) << 8 + numArr[5] = ', (int(numArr[4]) << 8) + int(numArr[5]))
+  port = (int(numArr[4]) << 8) + int(numArr[5])
+  return (ip, port)
 
 
-def sendAndRecieve(sock, msg, type):
+# The six numbers in parenthesis are the IP address and port that the client should connect a TCP/IP 
+# socket to to create the data channel. The first four numbers are the IP address (192.168.150.90 in this example)
+#  and the last two numbers are the port. Port numbers are 16-bits, so the two numbers represent the top and bottom 
+# 8-bits of the port number, respectively. In this example, the port number is (195 « 8) + 149 = 50069.
+# 195,149)
+
+
+def sendAndRecieve(sock, msg, msgType):
   try:
+    # print(msg)
     sendMessage(sock, msg)
   except:
-    print('could not send ', type, ' message')
+    print('could not send ', msgType, ' message')
   
   try:  
-    receieveMessage(sock)
+    return receieveMessage(sock)
   except:
-   print('could not receieve ', type, ' response')
+   print('could not receieve ', msgType, ' response')
 
   # print('scheme  :', parsed.scheme)
   # print('netloc  :', parsed.netloc)
