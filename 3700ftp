@@ -149,9 +149,9 @@ def performOperation(op, sock, path, localFile, loadingType):
     dataChannel = createDataChannel(sock) 
 
     if loadingType == "uploading":
-      uploadHelper(sock, dataChannel, path, localFile)
+      uploadHelper(op, sock, dataChannel, path, localFile)
     elif loadingType == "downloading":
-      downloadHelper(sock, dataChannel, path, localFile)
+      downloadHelper(op, sock, dataChannel, path, localFile)
     else:
       return
 
