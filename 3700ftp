@@ -56,19 +56,49 @@ def prepareToUploadOrDownload(sock):
 def ftpClient(args, loglevel):
   logging.basicConfig(format="%(levelname)s: %(message)s", level=loglevel)
 
+  print(args.param2)
   op = str(args.operation)
-  arg1 = str(args.param1) #ftp://[USER[:PASSWORD]@]HOST[:PORT]/PATH
-  arg2 = str(args.param2)
+  arg1 = args.param1
+  arg2 = args.param2
 
+  # print('\n\n' + arg2)
   if op != "ls" and op != "mkdir" and op != "rm" and op != "rmdir" and op != "cp" and op != "mv":
     print("please specify one of the operations: ls, mkdir, rm, rmdir, cp, mv")
     return
 
-  parsed = urlparse(arg1)  
-  print(parsed)
+  if (op == "cp" or op == "mv"): # cases where the url may be arg1 or arg2
+    if not arg2:
+      print("please provide both arguments for the copy or move operation")
+      return
 
-  # host = parsed.hostname or 'ftp.3700.network'    
-  host = 'ftp.3700.network'
+    parseArg1 = urlparse(str(arg1))
+    parseArg2 = urlparse(str(arg2)) 
+    if parseArg1.scheme == "ftp" and parseArg2.scheme != "ftp": # downloading
+      print('\narg1 is url\n')
+      parsed = parseArg1
+      localFile = str(arg2)
+      loadingType = "downloading"
+    elif parseArg2.scheme == "ftp" and parseArg1.scheme != "ftp": # uploading
+        print('\narg2 is url\n')
+        parsed = parseArg2
+        localFile = str(arg1)
+        loadingType = "uploading"
+    else:
+      print('please pass the ftp url as one of the arguments')
+      return
+
+  else:
+    parsed = urlparse(str(arg1))
+ 
+  if parsed is None:
+    print('err!!')
+    return 
+
+  # print(parsed)
+  # print('scheme  :', parsed.scheme)
+
+  host = parsed.hostname or 'ftp.3700.network'    
+  # host = 'ftp.3700.network'
   #port = parsed.port or 21
   port = 21
   path = parsed.path
@@ -94,7 +124,6 @@ def ftpClient(args, loglevel):
 
   authenticate(sock)
 
-
   if (op == "mkdir"):
     sendAndRecieve(sock, "MKD " + path + "\r\n", 'MKD')
 
@@ -102,26 +131,58 @@ def ftpClient(args, loglevel):
     sendAndRecieve(sock, "RMD " + path + "\r\n", 'RMD')
   
   if (op == "ls"):
-    (dataChannelIP, dataChannelPort) = createDataChannel(sock)
-    # print('(dataChannelIP, dataChannelPort) = ', (dataChannelIP, dataChannelPort))
-    # print('created STREAMing socket dataChannel, doing dataChannel.connect...')
-    # create another STREAMing socket
-    dataChannel = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    dataChannel.connect((dataChannelIP, dataChannelPort))
-    print('trying to send LIST now')
+    dataChannel = createDataChannel(sock)
     sendAndRecieve(sock, "LIST " + path + "\r\n", 'LIST')
     try:  
-      # print('getting res...')
       receieveMessage(dataChannel)
     except:
-      print('cant receieve from dc...')
+      print('cant receieve ls response from data channel...')
 
-  #if (op == "rm"):
+  # if (op == "cp"):
+  #   print('in cp')
+  #   if not localFile or not loadingType:
+  #     print('no local file')
+  #     return
+      
+  #   # you have localFile and parsed, those are the things!
+  #   dataChannel = createDataChannel(sock)
+  #   if loadingType == "uploading":
+  #     print('\nuploading!')
+  #     # print('\nlocalFile:', localFile)
+  #     # print('\n ftppath:', path)
+  #     sendAndRecieve(sock, "STOR /testerFile.txt\r\n", 'STOR') # wait for 150: Ok to send data
+  #     #sendAndRecieve(sock, "STOR ../../../Desktop/testerfile\r\n", 'STOR')
 
-    
+  #   elif loadingType == "downloading":
+  #     print('\ndownloading!')
+  #     sendAndRecieve(sock, "RETR " + path + "\r\n", 'RETR')
+  #   else:
+  #     print('no loading type')
+  #     return
 
-  
-  quit(sock)
+  #   try:  
+  #     sendOverDataChannel(dataChannel, "STOR /testerFile.txt\r\n", 'STOR') # ithink?
+  #   except:
+  #     print('cant upload over data channel...')
+
+  #   try:  
+  #     receieveMessage(sock)
+  #   except:
+  #     print('cant get sock res')
+
+  #   if loadingType == "uploading":
+  #     dataChannel.close() # need to close dc
+
+
+  # if (op == "rm"):
+  #   dataChannel = createDataChannel(sock)
+  #   sendAndRecieve(sock, "DELE " + path + "\r\n", 'DELE')
+  #   try:  
+  #     receieveMessage(dataChannel)
+  #   except:
+  #     print('cant receieve ls response from data channel...')
+    # close it?
+
   print('done, closing tcp socket')
   sock.close()
   
@@ -129,16 +190,13 @@ def ftpClient(args, loglevel):
 
 
 def createDataChannel(sock):
-  # print('creating data channel...')
   res = sendAndRecieve(sock, "PASV\r\n", 'PASV')
   numArr = res[res.find("(") + 1: res.find(")")].split(",")
   ip = numArr[0] + "." + numArr[1] + "." + numArr[2] + "." + numArr[3]
-  # print('calculating port. ')
-  # print('numArr[4]) << 8 = ', (int(numArr[4]) << 8))
-  # print('numArr[5] = ', int(numArr[5]))
-  # print('numArr[4]) << 8 + numArr[5] = ', (int(numArr[4]) << 8) + int(numArr[5]))
   port = (int(numArr[4]) << 8) + int(numArr[5])
-  return (ip, port)
+  dataChannel = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  dataChannel.connect((ip, port))
+  return dataChannel
 
 
 # The six numbers in parenthesis are the IP address and port that the client should connect a TCP/IP 
@@ -147,6 +205,12 @@ def createDataChannel(sock):
 # 8-bits of the port number, respectively. In this example, the port number is (195 « 8) + 149 = 50069.
 # 195,149)
 
+def sendOverDataChannel(sock, msg, msgType):
+  try:
+    # print(msg)
+    sendMessage(sock, msg)
+  except:
+    print('could not send ', msgType, ' message')
 
 def sendAndRecieve(sock, msg, msgType):
   try:
@@ -159,14 +223,6 @@ def sendAndRecieve(sock, msg, msgType):
     return receieveMessage(sock)
   except:
    print('could not receieve ', msgType, ' response')
-
-  # print('scheme  :', parsed.scheme)
-  # print('netloc  :', parsed.netloc)
-  # print('path    :', parsed.path)
-  # print('username:', parsed.username)
-  # print('password:', parsed.password)
-  # print('hostname:', parsed.hostname)
-  # print('port    :', parsed.port)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='ftp client!')

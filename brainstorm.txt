@@ -43,14 +43,36 @@ ftp://[USER[:PASSWORD]@]HOST[:PORT]/PATH
 $ ./3700ftp ls ftp://bob:s3cr3t@ftp.example.com/
 
 
-IM ON: STEP 4--
 
-PASV and LIST. Implement support for creating a data channel, 
-then implement the LIST command to test it.
+left todo:
 
-(54,88,34,75,7,100)
+cp <ARG1> <ARG2>         Copy the file given by ARG1 to the file given by
+                          ARG2. If ARG1 is a local file, then ARG2 must be a URL, and vice-versa.
 
-The six numbers in parenthesis are the IP address and port that the client should connect a TCP/IP socket to to create the data channel. 
-The first four numbers are the IP address (192.168.150.90 in this example) and the last two numbers are the port. 
-Port numbers are 16-bits, so the two numbers represent the top and bottom 8-bits of the port number, respectively.
-In this example, the port number is (195 « 8) + 149 = 50069.
+either 
+    cp ftp.../remoteFile.txt /Desktop/testFile.txt  --> download local in --> RETR
+    cp /Desktop/testFile.txt ftp.../remoteFile.txt  --> upload local out --> STOR
+                
+
+./3700ftp cp ~/Desktop ftp://hughesca:iEjqNW5nFSpT0ucmrUHw@ftp.3700.network:22/hello.txt
+
+
+mv <ARG1> <ARG2>         Move the file given by ARG1 to the file given by
+                          ARG2. If ARG1 is a local file, then ARG2 must be a URL, and vice-versa.
+rm <URL>                 Delete the file on the FTP server at the given URL
+
+
+IM ON: STEP 5-- STORE, RETR, and DELE. 
+
+Complete your client by adding support for file upload, download, and deletion. 
+Double check your implementation by comparing it to the results from a standard FTP client.
+
+
+STOR <path-to-file>\r\n
+// upload new file with given path == copy local file to remote
+
+RETR <path-to-file>\r\n
+// Download a file with the given path and name from the FTP server.
+
+DELE <path-to-file>\r\n
+// Delete the given file on the FTP server. Equivalent to rm on the Unix command line.
