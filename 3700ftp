@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 
 def sendMessage(s: socket, messageToSend: object):
   msg = messageToSend.encode()
+  print('sending encoded msg:', msg)
   totalBytesSent = 0
   while totalBytesSent < len(msg):
       # send logic inspiration: https://docs.python.org/3/howto/sockets.html
@@ -170,30 +171,29 @@ def ftpClient(args, loglevel):
       receieve(dataChannel, "cant receieve ls response from data channel...") # actual get the data
 
     if (op == "cp"):
-      print('in cp')
       if not localFile or not loadingType:
         print('no local file')
         return
 
-      # STEP 1: prep and make dc
-      # what order for these?
       prepareToUploadOrDownload(sock)
       dataChannel = createDataChannel(sock) 
 
       # STEP 2: send initial STOR of local file
       if loadingType == "uploading":
-        print('\nuploading!')
-        sendAndRecieve(sock, "STOR testerFile.txt\r\n", 'STOR') # should give 150: Ok to send data
-        #sendAndRecieve(sock, "STOR ../../../Desktop/testerfile\r\n", 'STOR')
+        fToUpload = open(localFile, "r")
 
-        # STEP 3: send STOR again but on dc (??)
-        try:  
-          send(dataChannel, "STOR i\r\n", 'STOR') # this is sending as a string lol. how make a file?
+        # tell the server where to store the incoming data
+        sendAndRecieve(sock, "STOR " + path + "\r\n", 'STOR') # --> 150: Ok to send data, then send bytes of file
+
+        try: 
+          send(dataChannel, fToUpload.read(), 'upload bytes') # this is sending as a string lol. how make a file?
         except:
-          print('cant upload over data channel...')
+          print('could not upload')
+
+        dataChannel.close()
+        receieve(sock, "response from upload")
+
         
-        dataChannel.close() # only close for uploading
-        receieve(sock, "idk lol")
 
     # elif loadingType == "downloading":
     #   print('\ndownloading!')
@@ -211,9 +211,9 @@ def ftpClient(args, loglevel):
     #     print('cant receieve ls response from data channel...')
       # close it?
 
-  print('\n\n\n\nquitting')
+  print('\n\n\n\nat end, peace')
   quit(sock)
-  print('done, closing tcp socket')
+  # print('done, closing tcp socket')
   sock.close()
   
 
