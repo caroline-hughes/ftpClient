@@ -36,6 +36,7 @@ def authenticate(sock, username, pwd):
   pwdMsg = "PASS " + pwd + "\r\n"
   sendAndRecieve(sock, userMsg, 'user')
   sendAndRecieve(sock, pwdMsg, 'pwd')
+  return True
   
 
 def quit(sock):
@@ -115,9 +116,7 @@ def ftpClient(args, loglevel):
   sock.connect((host, port))
   print('(host, port) = ', (host, port))
 
-  # listen for TCP connection response
   try:  
-    # print('getting res...')
     receieveMessage(sock)
   except:
     print('cant receieve...')
@@ -125,7 +124,7 @@ def ftpClient(args, loglevel):
   try:  
     authenticated = authenticate(sock, username, pwd)
   except:
-    print('authentication failed') 
+    print('!!! authentication failed !!!') 
     quit(sock)
     return
 
@@ -169,7 +168,7 @@ def ftpClient(args, loglevel):
     #     return
 
     #   try:  
-    #     sendOverDataChannel(dataChannel, "STOR /testerFile.txt\r\n", 'STOR') # ithink?
+    #     send(dataChannel, "STOR /testerFile.txt\r\n", 'STOR') # ithink?
     #   except:
     #     print('cant upload over data channel...')
 
@@ -207,27 +206,17 @@ def createDataChannel(sock):
   dataChannel.connect((ip, port))
   return dataChannel
 
-
-# The six numbers in parenthesis are the IP address and port that the client should connect a TCP/IP 
-# socket to to create the data channel. The first four numbers are the IP address (192.168.150.90 in this example)
-#  and the last two numbers are the port. Port numbers are 16-bits, so the two numbers represent the top and bottom 
-# 8-bits of the port number, respectively. In this example, the port number is (195 « 8) + 149 = 50069.
-# 195,149)
-
-def sendOverDataChannel(sock, msg, msgType):
+def send(sock, msg, msgType):
   try:
-    # print(msg)
     sendMessage(sock, msg)
   except:
     print('could not send ', msgType, ' message')
 
 def sendAndRecieve(sock, msg, msgType):
   try:
-    # print(msg)
     sendMessage(sock, msg)
   except:
     print('could not send ', msgType, ' message')
-  
   try:  
     return receieveMessage(sock)
   except:
