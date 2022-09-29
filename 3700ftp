@@ -163,8 +163,7 @@ def ftpClient(args, loglevel):
   op = str(args.operation)
   arg1 = args.param1
   arg2 = args.param2
-  localFile = "None"
-  loadingType = "None"
+  localFile, loadingType = "None"
 
   if op != "ls" and op != "mkdir" and op != "rm" and op != "rmdir" and op != "cp" and op != "mv":
     print("supported operations: ls, mkdir, rm, rmdir, cp, mv")
