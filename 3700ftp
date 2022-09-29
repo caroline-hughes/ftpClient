@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse, logging, socket
+import argparse, logging, socket, os
 from io import BufferedReader, BufferedWriter
 import string
 from urllib.parse import urlparse
@@ -33,8 +33,7 @@ def receieveMessage(s: socket):
   print('receieved:', buffer)
   return buffer
 
-# create a data channel by sending the PASV on the control socket, then 
-# using the ip and port information in the response to open another
+# send PASV over the control channel, then use the ip and port to open a data channel
 def createDataChannel(sock: socket):
   res = sendAndRecieve(sock, "PASV\r\n", 'PASV')
   numArr = res[res.find("(") + 1: res.find(")")].split(",")
@@ -61,16 +60,14 @@ def receieve(sock: socket, msgType: string):
    print('could not receieve ', msgType, ' response')
 
 
-# for ease of cases when both occur together
+# for the various cases when sending and receiving occur back-to-back
 def sendAndRecieve(sock: socket, msg, msgType: string):
   try:
     sendMessage(sock, msg)
   except:
     print('could not send ', msgType, ' message')
-  try:  
-    return receieveMessage(sock)
-  except:
-   print('could not receieve ', msgType, ' response')
+
+  receieve(sock, msgType)
 
 
 # send the login information to the server socket
@@ -86,13 +83,75 @@ def authenticate(sock: socket, username: string, pwd: string):
 def quit(sock: socket):
   quitMsg = "QUIT\r\n"
   sendAndRecieve(sock, quitMsg, 'quit')
-  
 
-# calls to be made to the server socket before uploading or downloading bytes
+
+# prepare for uploading or downloading bytes
 def prepareToUploadOrDownload(sock: socket):
   sendAndRecieve(sock, "TYPE I\r\n", 'type')
   sendAndRecieve(sock, "MODE S\r\n", 'mode')
-  sendAndRecieve(sock, "STRU F\r\n", 'stru')
+  sendAndRecieve(sock, "STRU F\r\n", 'stru')  
+
+
+# upload the localFile to the remote path
+def uploadHelper(op: string, sock: socket, dataChannel: socket, path: string, localFile: string):
+  res = sendAndRecieve(sock, "STOR " + path + "\r\n", 'STOR')
+  if "553" in res:
+    return
+  try: 
+    fileToUpload: BufferedReader = open(localFile, "rb")
+    bytesSend(dataChannel, fileToUpload.read(), 'upload bytes')
+    fileToUpload.close()
+  except:
+    print('could not upload')
+
+  dataChannel.close()
+
+  if op == 'mv':
+    os.remove(localFile)
+
+  
+# download the file at the remote path to localFile
+def downloadHelper(op: string, sock: socket, dataChannel: socket, path: string, localFile: string):
+  res = sendAndRecieve(sock, "RETR " + path + "\r\n", 'RETR')
+  if "553" in res:
+    return
+  try: 
+    destinationFile: BufferedWriter = open(localFile, "wb+")
+    destinationFile.write(dataChannel.recv(8192))
+    destinationFile.close()
+  except:
+    print('could not download')
+
+  if op == 'mv':
+    sendAndRecieve(sock, "DELE " + path + "\r\n", 'DELE')
+  
+
+# delegate to operation implementation
+def performOperation(op, sock, path, localFile, loadingType):
+  if op == "mkdir":
+    sendAndRecieve(sock, "MKD " + path + "\r\n", 'MKD')
+
+  if op == "rmdir":
+    sendAndRecieve(sock, "RMD " + path + "\r\n", 'RMD')
+  
+  if op == "rm":
+    sendAndRecieve(sock, "DELE " + path + "\r\n", 'DELE')
+
+  if op == "ls":
+    dataChannel = createDataChannel(sock)
+    sendAndRecieve(sock, "LIST " + path + "\r\n", 'LIST')
+    receieve(dataChannel, "ls")
+
+  if op == "cp" or op == "mv":
+    prepareToUploadOrDownload(sock)
+    dataChannel = createDataChannel(sock) 
+
+    if loadingType == "uploading":
+      uploadHelper(sock, dataChannel, path, localFile)
+    elif loadingType == "downloading":
+      downloadHelper(sock, dataChannel, path, localFile)
+    else:
+      return
 
 
 # ftp client which supports mkdir, rmdir, ls, rm, cp, and mv
@@ -102,13 +161,13 @@ def ftpClient(args, loglevel):
   op = str(args.operation)
   arg1 = args.param1
   arg2 = args.param2
+  localFile = "None"
+  loadingType = "None"
 
   if op != "ls" and op != "mkdir" and op != "rm" and op != "rmdir" and op != "cp" and op != "mv":
     print("supported operations: ls, mkdir, rm, rmdir, cp, mv")
     return
 
-  localFile="None"
-  loadingType="None"
   if (op == "cp" or op == "mv"):
     if not arg2:
       print("please provide two arguments for the cp or mv operation")
@@ -158,62 +217,6 @@ def ftpClient(args, loglevel):
 
   quit(sock)
   sock.close()
-  
-
-# UPLOAD HELPER
-def uploadHelper(sock: socket, dataChannel: socket, path: string, localFile: string):
-  res = sendAndRecieve(sock, "STOR " + path + "\r\n", 'STOR')
-  if "553" in res:
-    return
-  try: 
-    fileToUpload: BufferedReader = open(localFile, "rb")
-    bytesSend(dataChannel, fileToUpload.read(), 'upload bytes')
-    fileToUpload.close()
-  except:
-    print('could not upload')
-
-  dataChannel.close()
-
-
-# DOWNLOAD HELPER
-def downloadHelper(sock: socket, dataChannel: socket, path: string, localFile: string):
-  res = sendAndRecieve(sock, "RETR " + path + "\r\n", 'RETR')
-  if "553" in res:
-    return
-  try: 
-    destinationFile: BufferedWriter = open(localFile, "wb+")
-    destinationFile.write(dataChannel.recv(8192))
-    destinationFile.close()
-  except:
-    print('could not download')
-  
-
-# DELEGATE TO OPERATION IMPLEMENTATION
-def performOperation(op, sock, path, localFile, loadingType):
-  if op == "mkdir":
-    sendAndRecieve(sock, "MKD " + path + "\r\n", 'MKD')
-
-  if op == "rmdir":
-    sendAndRecieve(sock, "RMD " + path + "\r\n", 'RMD')
-  
-  if op == "rm":
-    sendAndRecieve(sock, "DELE " + path + "\r\n", 'DELE')
-
-  if op == "ls":
-    dataChannel = createDataChannel(sock)
-    sendAndRecieve(sock, "LIST " + path + "\r\n", 'LIST')
-    receieve(dataChannel, "cant receieve ls response from data channel...")
-
-  if op == "cp" or op == "mv":
-    prepareToUploadOrDownload(sock)
-    dataChannel = createDataChannel(sock) 
-
-    if loadingType == "uploading":
-      uploadHelper(sock, dataChannel, path, localFile)
-    elif loadingType == "downloading":
-      downloadHelper(sock, dataChannel, path, localFile)
-    else:
-      return
 
 
 if __name__ == '__main__':
