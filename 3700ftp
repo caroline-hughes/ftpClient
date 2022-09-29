@@ -178,22 +178,21 @@ def ftpClient(args, loglevel):
       prepareToUploadOrDownload(sock)
       dataChannel = createDataChannel(sock) 
 
-      # STEP 2: send initial STOR of local file
       if loadingType == "uploading":
-        fToUpload = open(localFile, "r")
-
-        # tell the server where to store the incoming data
-        sendAndRecieve(sock, "STOR " + path + "\r\n", 'STOR') # --> 150: Ok to send data, then send bytes of file
+        fileToUpload = open(localFile, "r")
+        # tell the server the path to store the incoming data
+        res = sendAndRecieve(sock, "STOR " + path + "\r\n", 'STOR') # --> "150: Ok to send data"
+        if "553" in res:
+          return
 
         try: 
-          send(dataChannel, fToUpload.read(), 'upload bytes') # this is sending as a string lol. how make a file?
+          send(dataChannel, fileToUpload.read(), 'upload bytes')
         except:
           print('could not upload')
 
         dataChannel.close()
+        fileToUpload.close()
         receieve(sock, "response from upload")
-
-        
 
     # elif loadingType == "downloading":
     #   print('\ndownloading!')
