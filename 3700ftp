@@ -2,13 +2,11 @@
 import argparse, logging, socket
 from urllib.parse import urlparse
 
-def sendMessage(s: socket, messageToSend: object, encode= True):
+def sendMessage(s: socket, messageToSend: object, encode=True):
   if encode:
     msg = messageToSend.encode()
   else:
-    print('not encoding...')
     msg = messageToSend
-  print('sending encoded msg:', msg)
   totalBytesSent = 0
   while totalBytesSent < len(msg):
       # send logic inspiration: https://docs.python.org/3/howto/sockets.html
@@ -37,6 +35,15 @@ def receieveMessage(s: socket, decode=True):
   return buffer
 
 
+      # else:
+      #   while "\r\n" not in byteByffer: 
+      #     data = s.recv(1024)
+      #     # buffer logic inspiration: https://stackoverflow.com/questions/55922194/python-breaks-string-after-first-character
+      #     if not data:
+      #         break
+      #     byteByffer += data
+
+
 # create a data channel by sending the PASV on the control socket, then 
 # using the ip and port information in the response to open another
 def createDataChannel(sock):
@@ -50,17 +57,17 @@ def createDataChannel(sock):
 
 
 # send the given message on the given socket
-def send(sock, msg, msgType, encode=True):
+def bytesSend(sock, msg, msgType):
   try:
-    sendMessage(sock, msg, encode)
+    sendMessage(sock, msg, False)
   except:
     print('could not send ', msgType, ' message')
 
 
 # listen for response on the given socket
-def receieve(sock, msgType, decode=True):
+def receieve(sock, msgType):
   try:  
-    return receieveMessage(sock, decode)
+    return receieveMessage(sock)
   except:
    print('could not receieve ', msgType, ' response')
 
@@ -193,7 +200,7 @@ def ftpClient(args, loglevel):
           return
 
         try: 
-          send(dataChannel, fileToUpload.read(), 'upload bytes', False)
+          bytesSend(dataChannel, fileToUpload.read(), 'upload bytes')
         except:
           print('could not upload')
 
@@ -210,8 +217,8 @@ def ftpClient(args, loglevel):
           return
 
         try: 
-          bytesReceieved = receieve(dataChannel, 'download bytes', False)
-          print("bytesReceieved", bytesReceieved)
+          bytesReceieved = dataChannel.recv(8192)
+          # bytesReceieved = receieve(dataChannel, 'download bytes', False)
         except:
           print('could not download')
         
