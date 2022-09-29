@@ -60,16 +60,6 @@ def receieve(sock: socket, msgType: string):
    print('could not receieve ', msgType, ' response')
 
 
-# for the various cases when sending and receiving occur back-to-back
-def sendAndRecieve(sock: socket, msg, msgType: string):
-  try:
-    sendMessage(sock, msg)
-  except:
-    print('could not send ', msgType, ' message')
-
-  receieve(sock, msgType)
-
-
 # send the login information to the server socket
 def authenticate(sock: socket, username: string, pwd: string):
   userMsg = "USER " + username + "\r\n"
@@ -125,6 +115,18 @@ def downloadHelper(op: string, sock: socket, dataChannel: socket, path: string, 
   if op == 'mv':
     sendAndRecieve(sock, "DELE " + path + "\r\n", 'DELE')
   
+
+# for the various cases when sending and receiving occur back-to-back
+def sendAndRecieve(sock: socket, msg, msgType: string):
+  try:
+    sendMessage(sock, msg)
+  except:
+    print('could not send ', msgType, ' message')
+  try:  
+    return receieveMessage(sock)
+  except:
+   print('could not receieve ', msgType, ' response')
+
 
 # delegate to operation implementation
 def performOperation(op, sock, path, localFile, loadingType):
