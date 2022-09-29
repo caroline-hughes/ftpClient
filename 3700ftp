@@ -30,7 +30,7 @@ def receieveMessage(s: socket, decode=True):
               break
           buffer += data
     else:
-      buffer = data = s.recv(8192)
+      buffer = s.recv(8192)
   except Exception as loopException:
       print("Exception occurred in loop:", loopException)
   print('receieved:', buffer)
