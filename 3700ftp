@@ -17,32 +17,19 @@ def sendMessage(s: socket, messageToSend: object, encode=True):
   print('sent ', totalBytesSent, ' bytes')
 
 
-def receieveMessage(s: socket, decode=True):
+def receieveMessage(s: socket):
   buffer = ''
   try:
-    if decode:
-      while "\n" not in buffer: 
-          data = s.recv(1024).decode('utf-8')
-          # buffer logic inspiration: https://stackoverflow.com/questions/55922194/python-breaks-string-after-first-character
-          if not data:
-              break
-          buffer += data
-    else:
-      buffer = s.recv(8192)
+    while "\n" not in buffer: 
+        data = s.recv(1024).decode('utf-8')
+        # buffer logic inspiration: https://stackoverflow.com/questions/55922194/python-breaks-string-after-first-character
+        if not data:
+            break
+        buffer += data
   except Exception as loopException:
       print("Exception occurred in loop:", loopException)
   print('receieved:', buffer)
   return buffer
-
-
-      # else:
-      #   while "\r\n" not in byteByffer: 
-      #     data = s.recv(1024)
-      #     # buffer logic inspiration: https://stackoverflow.com/questions/55922194/python-breaks-string-after-first-character
-      #     if not data:
-      #         break
-      #     byteByffer += data
-
 
 # create a data channel by sending the PASV on the control socket, then 
 # using the ip and port information in the response to open another
@@ -179,6 +166,10 @@ def ftpClient(args, loglevel):
     if (op == "rmdir"):
       sendAndRecieve(sock, "RMD " + path + "\r\n", 'RMD')
     
+    if (op == "rm"):
+      # tell the server the path of the thing to delete
+      sendAndRecieve(sock, "DELE " + path + "\r\n", 'DELE')
+
     if (op == "ls"):
       dataChannel = createDataChannel(sock)
       sendAndRecieve(sock, "LIST " + path + "\r\n", 'LIST') # initiate using control
@@ -194,8 +185,9 @@ def ftpClient(args, loglevel):
 
       if loadingType == "uploading":
         fileToUpload = open(localFile, "rb")
+
         # tell the server the path to store the incoming data
-        res = sendAndRecieve(sock, "STOR " + path + "\r\n", 'STOR') # --> "150: Ok to send data"
+        res = sendAndRecieve(sock, "STOR " + path + "\r\n", 'STOR')
         if "553" in res:
           return
 
@@ -209,16 +201,15 @@ def ftpClient(args, loglevel):
         receieve(sock, "response from upload")
 
       elif loadingType == "downloading":
-        print('\ndownloading!')
+        destinationFile = open(localFile, "wb+")
 
-        destinationFile = open(localFile, "wb+") # write or create if doesnt exist
-        res = sendAndRecieve(sock, "RETR " + path + "\r\n", 'RETR') # --> "150: ?"
+        # tell the server the path of the file to download
+        res = sendAndRecieve(sock, "RETR " + path + "\r\n", 'RETR')
         if "553" in res:
           return
 
         try: 
           bytesReceieved = dataChannel.recv(8192)
-          # bytesReceieved = receieve(dataChannel, 'download bytes', False)
         except:
           print('could not download')
         
@@ -229,14 +220,6 @@ def ftpClient(args, loglevel):
         print('no loading type')
         return
 
-    # if (op == "rm"):
-    #   dataChannel = createDataChannel(sock)
-    #   sendAndRecieve(sock, "DELE " + path + "\r\n", 'DELE')
-    #   try:  
-    #     receieveMessage(dataChannel)
-    #   except:
-    #     print('cant receieve ls response from data channel...')
-      # close it?
 
   print('\n\n\n\nat end, peace')
   quit(sock)
