@@ -2,8 +2,12 @@
 import argparse, logging, socket
 from urllib.parse import urlparse
 
-def sendMessage(s: socket, messageToSend: object):
-  msg = messageToSend.encode()
+def sendMessage(s: socket, messageToSend: object, encode= True):
+  if encode:
+    msg = messageToSend.encode()
+  else:
+    print('not encoding...')
+    msg = messageToSend
   print('sending encoded msg:', msg)
   totalBytesSent = 0
   while totalBytesSent < len(msg):
@@ -43,9 +47,9 @@ def createDataChannel(sock):
 
 
 # send the given message on the given socket
-def send(sock, msg, msgType):
+def send(sock, msg, msgType, encode=True):
   try:
-    sendMessage(sock, msg)
+    sendMessage(sock, msg, encode)
   except:
     print('could not send ', msgType, ' message')
 
@@ -179,14 +183,15 @@ def ftpClient(args, loglevel):
       dataChannel = createDataChannel(sock) 
 
       if loadingType == "uploading":
-        fileToUpload = open(localFile, "r")
+        # fileToUpload = open(localFile, "r")
+        fileToUpload = open(localFile, "rb") #open in binary instead
         # tell the server the path to store the incoming data
         res = sendAndRecieve(sock, "STOR " + path + "\r\n", 'STOR') # --> "150: Ok to send data"
         if "553" in res:
           return
 
         try: 
-          send(dataChannel, fileToUpload.read(), 'upload bytes')
+          send(dataChannel, fileToUpload.read(), 'upload bytes', False)
         except:
           print('could not upload')
 
