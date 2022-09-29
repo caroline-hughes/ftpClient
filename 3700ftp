@@ -31,9 +31,9 @@ def receieveMessage(s: socket):
   return buffer
 
 
-def authenticate(sock):
-  userMsg = "USER hughesca\r\n"
-  pwdMsg = "PASS iEjqNW5nFSpT0ucmrUHw\r\n"
+def authenticate(sock, username, pwd):
+  userMsg = "USER " + username + "\r\n"
+  pwdMsg = "PASS " + pwd + "\r\n"
   sendAndRecieve(sock, userMsg, 'user')
   sendAndRecieve(sock, pwdMsg, 'pwd')
   
@@ -122,67 +122,76 @@ def ftpClient(args, loglevel):
   except:
     print('cant receieve...')
 
-  authenticate(sock)
+  try:  
+    authenticated = authenticate(sock, username, pwd)
+  except:
+    print('authentication failed') 
+    quit(sock)
+    return
 
-  if (op == "mkdir"):
-    sendAndRecieve(sock, "MKD " + path + "\r\n", 'MKD')
+  # wait for authentication to proceed to the operation
+  if authenticated:
 
-  if (op == "rmdir"):
-    sendAndRecieve(sock, "RMD " + path + "\r\n", 'RMD')
-  
-  if (op == "ls"):
-    dataChannel = createDataChannel(sock)
-    sendAndRecieve(sock, "LIST " + path + "\r\n", 'LIST')
-    try:  
-      receieveMessage(dataChannel)
-    except:
-      print('cant receieve ls response from data channel...')
+    if (op == "mkdir"):
+      sendAndRecieve(sock, "MKD " + path + "\r\n", 'MKD')
 
-  # if (op == "cp"):
-  #   print('in cp')
-  #   if not localFile or not loadingType:
-  #     print('no local file')
-  #     return
-      
-  #   # you have localFile and parsed, those are the things!
-  #   dataChannel = createDataChannel(sock)
-  #   if loadingType == "uploading":
-  #     print('\nuploading!')
-  #     # print('\nlocalFile:', localFile)
-  #     # print('\n ftppath:', path)
-  #     sendAndRecieve(sock, "STOR /testerFile.txt\r\n", 'STOR') # wait for 150: Ok to send data
-  #     #sendAndRecieve(sock, "STOR ../../../Desktop/testerfile\r\n", 'STOR')
+    if (op == "rmdir"):
+      sendAndRecieve(sock, "RMD " + path + "\r\n", 'RMD')
+    
+    if (op == "ls"):
+      dataChannel = createDataChannel(sock)
+      sendAndRecieve(sock, "LIST " + path + "\r\n", 'LIST')
+      try:  
+        receieveMessage(dataChannel)
+      except:
+        print('cant receieve ls response from data channel...')
 
-  #   elif loadingType == "downloading":
-  #     print('\ndownloading!')
-  #     sendAndRecieve(sock, "RETR " + path + "\r\n", 'RETR')
-  #   else:
-  #     print('no loading type')
-  #     return
+    # if (op == "cp"):
+    #   print('in cp')
+    #   if not localFile or not loadingType:
+    #     print('no local file')
+    #     return
+        
+    #   # you have localFile and parsed, those are the things!
+    #   dataChannel = createDataChannel(sock)
+    #   if loadingType == "uploading":
+    #     print('\nuploading!')
+    #     # print('\nlocalFile:', localFile)
+    #     # print('\n ftppath:', path)
+    #     sendAndRecieve(sock, "STOR /testerFile.txt\r\n", 'STOR') # wait for 150: Ok to send data
+    #     #sendAndRecieve(sock, "STOR ../../../Desktop/testerfile\r\n", 'STOR')
 
-  #   try:  
-  #     sendOverDataChannel(dataChannel, "STOR /testerFile.txt\r\n", 'STOR') # ithink?
-  #   except:
-  #     print('cant upload over data channel...')
+    #   elif loadingType == "downloading":
+    #     print('\ndownloading!')
+    #     sendAndRecieve(sock, "RETR " + path + "\r\n", 'RETR')
+    #   else:
+    #     print('no loading type')
+    #     return
 
-  #   try:  
-  #     receieveMessage(sock)
-  #   except:
-  #     print('cant get sock res')
+    #   try:  
+    #     sendOverDataChannel(dataChannel, "STOR /testerFile.txt\r\n", 'STOR') # ithink?
+    #   except:
+    #     print('cant upload over data channel...')
 
-  #   if loadingType == "uploading":
-  #     dataChannel.close() # need to close dc
+    #   try:  
+    #     receieveMessage(sock)
+    #   except:
+    #     print('cant get sock res')
+
+    #   if loadingType == "uploading":
+    #     dataChannel.close() # need to close dc
 
 
-  # if (op == "rm"):
-  #   dataChannel = createDataChannel(sock)
-  #   sendAndRecieve(sock, "DELE " + path + "\r\n", 'DELE')
-  #   try:  
-  #     receieveMessage(dataChannel)
-  #   except:
-  #     print('cant receieve ls response from data channel...')
-    # close it?
+    # if (op == "rm"):
+    #   dataChannel = createDataChannel(sock)
+    #   sendAndRecieve(sock, "DELE " + path + "\r\n", 'DELE')
+    #   try:  
+    #     receieveMessage(dataChannel)
+    #   except:
+    #     print('cant receieve ls response from data channel...')
+      # close it?
 
+  quit(sock)
   print('done, closing tcp socket')
   sock.close()
   
